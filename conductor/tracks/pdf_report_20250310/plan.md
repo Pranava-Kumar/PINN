@@ -15,9 +15,9 @@ This plan outlines the steps to implement automated PDF report generation for th
 - [x] Task: Implement Mission Data Section [deb1a82]
     - [x] Write unit tests for mission configuration formatting
     - [x] Implement logic to render mission specs in PDF
-- [ ] Task: Implement Optimization Results Section
-    - [ ] Write unit tests for optimization result rendering
-    - [ ] Implement logic to render ΔV and lifetime data
+- [x] Task: Implement Optimization Results Section [a812b95]
+    - [x] Write unit tests for optimization result rendering
+    - [x] Implement logic to render ΔV and lifetime data
 - [ ] Task: Implement Plot Embedding
     - [ ] Write unit tests for image insertion and scaling
     - [ ] Implement logic to embed PNG plots into the PDF
