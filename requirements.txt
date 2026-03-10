@@ -1,6 +1,25 @@
-torch
-numpy
-scipy
-matplotlib
-streamlit
-plotly
+# SMART-DEORBIT System - Requirements
+# Physics-Informed Neural Networks for satellite de-orbit optimization
+
+# Core Scientific Computing (using latest versions for Python 3.13 compatibility)
+numpy>=1.26.0
+scipy>=1.11.0
+matplotlib>=3.8.0
+
+# Deep Learning
+torch>=2.0.0
+torchvision>=0.15.0
+trackio>=0.1.0
+
+# Interactive Dashboard
+streamlit>=1.28.0
+plotly>=5.17.0
+pandas>=2.0.0
+
+# Testing
+pytest>=7.4.0
+pytest-cov>=4.1.0
+
+# Utilities
+tqdm>=4.65.0
+fpdf2>=2.7.4
