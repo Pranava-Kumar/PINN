@@ -14,5 +14,8 @@
 - **Plotly**: Used for creating interactive, web-based 3D orbital trajectories and multi-objective Pareto front visualizations.
 - **Matplotlib**: Leveraged for high-quality, publication-ready static plots in automated reports.
 
+## Documentation & Reporting
+- **fpdf2**: High-performance PDF generation library for Python, used to create professional technical reports for mission optimization results.
+
 ## Testing & Quality Assurance
 - **pytest**: The primary testing framework for unit testing physical constants, orbital conversions, and PINN model integrity.
