@@ -23,11 +23,11 @@ This plan outlines the steps to implement automated PDF report generation for th
     - [x] Implement logic to embed PNG plots into the PDF
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Content' (Protocol in workflow.md)
 
-## Phase 3: System Integration
+## Phase 3: System Integration [checkpoint: d362e02]
 - [x] Task: Integrate with CLI Demo (`run_demo.py`) [f5b8597]
     - [x] Write integration tests for CLI report output
     - [x] Update `run_demo.py` to trigger PDF generation at end of mission
 - [x] Task: Integrate with Streamlit Dashboard (`app.py`) [be504ae]
     - [x] Write tests for PDF generation in Streamlit context
     - [x] Add "Download Technical Report" button to the dashboard
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: Integration' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 3: Integration' (Protocol in workflow.md)
