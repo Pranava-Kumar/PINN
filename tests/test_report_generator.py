@@ -129,4 +129,32 @@ def test_report_optimization_results():
     
     assert len(generator.pdf.pages) > 0
 
+def test_report_plots(tmp_path):
+    """Test that plots are added to the report."""
+    config = SpacecraftConfig(
+        name="Test Mission",
+        mission_type=MissionType.PSLV_PS4,
+        orbit_altitude=750e3,
+        dry_mass=920.0,
+        wet_mass=1000.0,
+        cross_section_no_sail=2.0,
+        drag_sail_area=10.0,
+        Cd=2.2,
+        max_delta_v=100.0,
+        specific_impulse=250.0
+    )
+    
+    # Create a dummy image for testing
+    from PIL import Image
+    import numpy as np
+    img_path = tmp_path / "test_plot.png"
+    Image.fromarray(np.zeros((100, 100, 3), dtype=np.uint8)).save(img_path)
+    
+    generator = ReportGenerator(config)
+    generator.create_base_document()
+    generator.add_plots([img_path])
+    
+    assert len(generator.pdf.pages) > 0
+
+
 

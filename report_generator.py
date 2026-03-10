@@ -1,6 +1,7 @@
 from fpdf import FPDF
 from pathlib import Path
 from datetime import datetime
+from typing import List
 from config import SpacecraftConfig
 
 class PDFReport(FPDF):
@@ -105,3 +106,25 @@ class ReportGenerator:
             self.pdf.set_font('helvetica', '', 10)
             
         self.pdf.ln(10)
+
+    def add_plots(self, plot_paths: List[Path]):
+        """Embeds plots into the report."""
+        if not self.pdf:
+            self.create_base_document()
+            
+        self.pdf.set_font('helvetica', 'B', 12)
+        self.pdf.cell(0, 10, '3. Analysis Plots', new_x="LMARGIN", new_y="NEXT")
+        self.pdf.ln(5)
+        
+        for i, path in enumerate(plot_paths):
+            if path.exists():
+                # Add a new page if we are near the bottom
+                if self.pdf.get_y() > 200:
+                    self.pdf.add_page()
+                
+                # Center the image
+                # Standard width is ~190mm (A4 is 210mm - margins)
+                self.pdf.image(str(path), x=10, w=180)
+                self.pdf.ln(5)
+                
+        self.pdf.ln(5)
