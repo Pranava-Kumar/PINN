@@ -90,3 +90,43 @@ def test_report_mission_data():
     assert len(generator.pdf.pages) > 0
     # We can't easily check PDF content without parsing, but we check it doesn't crash
 
+def test_report_optimization_results():
+    """Test that optimization results are added to the report."""
+    from delta_v_optimizer import OptimizationResult
+    
+    config = SpacecraftConfig(
+        name="Test Mission",
+        mission_type=MissionType.PSLV_PS4,
+        orbit_altitude=750e3,
+        dry_mass=920.0,
+        wet_mass=1000.0,
+        cross_section_no_sail=2.0,
+        drag_sail_area=10.0,
+        Cd=2.2,
+        max_delta_v=100.0,
+        specific_impulse=250.0
+    )
+    
+    result = OptimizationResult(
+        success=True,
+        optimal_dv=45.2,
+        lifetime_at_optimal=4.8,
+        objective_value=0.05,
+        n_function_evaluations=25,
+        compute_time_s=12.5,
+        method="hybrid",
+        message="Converged successfully",
+        dv_history=[0, 10, 20, 30, 40, 45.2],
+        lifetime_history=[25.0, 15.0, 10.0, 7.0, 5.5, 4.8],
+        no_burn_lifetime=25.0,
+        propulsive_only_dv=150.0,
+        fuel_savings_percent=69.8
+    )
+    
+    generator = ReportGenerator(config)
+    generator.create_base_document()
+    generator.add_optimization_results(result)
+    
+    assert len(generator.pdf.pages) > 0
+
+

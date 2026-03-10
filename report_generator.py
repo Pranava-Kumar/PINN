@@ -70,3 +70,38 @@ class ReportGenerator:
             self.pdf.cell(0, 8, f'{value}', border=0, new_x="LMARGIN", new_y="NEXT")
         
         self.pdf.ln(10)
+
+    def add_optimization_results(self, result):
+        """Adds ΔV optimization results to the report."""
+        if not self.pdf:
+            self.create_base_document()
+            
+        self.pdf.set_font('helvetica', 'B', 12)
+        self.pdf.cell(0, 10, '2. Optimization Results', new_x="LMARGIN", new_y="NEXT")
+        self.pdf.set_font('helvetica', '', 10)
+        
+        status = "Success" if result.success else "Failed"
+        
+        data = [
+            ('Optimization Status', status),
+            ('Algorithm Used', result.method.upper()),
+            ('Optimal Retrograde Delta-V', f'{result.optimal_dv:.2f} m/s'),
+            ('Final Orbital Lifetime', f'{result.lifetime_at_optimal:.2f} years'),
+            ('Fuel Savings (vs Propulsive)', f'{result.fuel_savings_percent:.1f}%'),
+            ('Propulsive-only Delta-V Req.', f'{result.propulsive_only_dv:.1f} m/s'),
+            ('No-burn Lifetime (Sail Only)', f'{result.no_burn_lifetime:.2f} years'),
+            ('Number of Evaluations', str(result.n_function_evaluations)),
+            ('Computation Time', f'{result.compute_time_s:.2f} s'),
+        ]
+        
+        for label, value in data:
+            self.pdf.cell(50, 8, f'{label}:', border=0)
+            self.pdf.cell(0, 8, f'{value}', border=0, new_x="LMARGIN", new_y="NEXT")
+            
+        if result.message:
+            self.pdf.ln(2)
+            self.pdf.set_font('helvetica', 'I', 9)
+            self.pdf.multi_cell(0, 8, f'Note: {result.message}')
+            self.pdf.set_font('helvetica', '', 10)
+            
+        self.pdf.ln(10)
