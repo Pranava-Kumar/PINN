@@ -3,9 +3,9 @@
 This plan outlines the steps to implement automated PDF report generation for the SMART-DEORBIT System.
 
 ## Phase 1: Foundation and Environment
-- [ ] Task: Conductor - Setup PDF generation environment
-    - [ ] Install `fpdf2` dependency
-    - [ ] Update `requirements.txt` and `pyproject.toml`
+- [x] Task: Conductor - Setup PDF generation environment [eea5549]
+    - [x] Install `fpdf2` dependency
+    - [x] Update `requirements.txt` and `pyproject.toml`
 - [ ] Task: Create PDF Generator Base Class
     - [ ] Write unit tests for `ReportGenerator` initialization
     - [ ] Implement `ReportGenerator` base class with header/footer logic
