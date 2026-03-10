@@ -18,9 +18,9 @@ This plan outlines the steps to implement automated PDF report generation for th
 - [x] Task: Implement Optimization Results Section [a812b95]
     - [x] Write unit tests for optimization result rendering
     - [x] Implement logic to render ΔV and lifetime data
-- [ ] Task: Implement Plot Embedding
-    - [ ] Write unit tests for image insertion and scaling
-    - [ ] Implement logic to embed PNG plots into the PDF
+- [x] Task: Implement Plot Embedding [fcd14c8]
+    - [x] Write unit tests for image insertion and scaling
+    - [x] Implement logic to embed PNG plots into the PDF
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Content' (Protocol in workflow.md)
 
 ## Phase 3: System Integration
