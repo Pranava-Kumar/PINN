@@ -42,3 +42,31 @@ class ReportGenerator:
             self.pdf.output(str(self.output_path))
             return self.output_path
         return None
+
+    def add_mission_data(self):
+        """Adds mission configuration details to the report."""
+        if not self.pdf:
+            self.create_base_document()
+            
+        self.pdf.set_font('helvetica', 'B', 12)
+        self.pdf.cell(0, 10, '1. Mission Configuration', new_x="LMARGIN", new_y="NEXT")
+        self.pdf.set_font('helvetica', '', 10)
+        
+        data = [
+            ('Mission Name', self.config.name),
+            ('Mission Type', self.config.mission_type.value),
+            ('Initial Altitude', f'{self.config.orbit_altitude/1000:.1f} km'),
+            ('Inclination', f'{self.config.orbit_inclination:.2f} deg'),
+            ('Dry Mass', f'{self.config.dry_mass:.1f} kg'),
+            ('Wet Mass', f'{self.config.wet_mass:.1f} kg'),
+            ('Drag Sail Area', f'{self.config.drag_sail_area:.1f} m²'),
+            ('Drag Coefficient (Cd)', f'{self.config.Cd:.2f}'),
+            ('Max Delta-V', f'{self.config.max_delta_v:.1f} m/s'),
+            ('Specific Impulse', f'{self.config.specific_impulse:.1f} s'),
+        ]
+        
+        for label, value in data:
+            self.pdf.cell(50, 8, f'{label}:', border=0)
+            self.pdf.cell(0, 8, f'{value}', border=0, new_x="LMARGIN", new_y="NEXT")
+        
+        self.pdf.ln(10)

@@ -66,3 +66,27 @@ def test_report_save(tmp_path):
     
     assert path.exists()
     assert path.suffix == ".pdf"
+
+def test_report_mission_data():
+    """Test that mission data is added to the report."""
+    config = SpacecraftConfig(
+        name="Test Mission",
+        mission_type=MissionType.PSLV_PS4,
+        orbit_altitude=750e3,
+        dry_mass=920.0,
+        wet_mass=1000.0,
+        cross_section_no_sail=2.0,
+        drag_sail_area=10.0,
+        Cd=2.2,
+        max_delta_v=100.0,
+        specific_impulse=250.0
+    )
+    
+    generator = ReportGenerator(config)
+    generator.create_base_document()
+    generator.add_mission_data()
+    
+    # Check that some text was added (internal check of fpdf)
+    assert len(generator.pdf.pages) > 0
+    # We can't easily check PDF content without parsing, but we check it doesn't crash
+
