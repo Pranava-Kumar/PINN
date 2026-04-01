@@ -203,13 +203,16 @@ def plot_trajectory_comparison(rk8_result, pinn_states, t_years, save_path: str)
     ax.set_title(f'Velocity Prediction Error (Mean: {np.mean(vel_error):.4f} km/s)', fontsize=14)
     ax.grid(True, alpha=0.3)
     
-    # Error distribution
+    # Plot error distribution
     ax = axes[1, 2]
-    ax.hist(alt_error, bins=30, color='red', alpha=0.7, edgecolor='black')
-    ax.set_xlabel('Altitude Error (km)', fontsize=12)
-    ax.set_ylabel('Frequency', fontsize=12)
-    ax.set_title('Altitude Error Distribution', fontsize=14)
-    ax.grid(True, alpha=0.3)
+    if np.any(np.isfinite(alt_error)):
+        ax.hist(alt_error[np.isfinite(alt_error)], bins=30, color='red', alpha=0.7, edgecolor='black')
+        ax.set_xlabel('Absolute Error (km)', fontsize=12)
+        ax.set_ylabel('Frequency', fontsize=12)
+        ax.set_title('Prediction Error Distribution', fontsize=14)
+        ax.grid(True, alpha=0.3)
+    else:
+        ax.text(0.5, 0.5, "No finite error data available", ha='center')
     ax.axvline(np.mean(alt_error), color='black', linestyle='--', linewidth=2, label=f'Mean: {np.mean(alt_error):.3f}')
     ax.axvline(np.std(alt_error), color='blue', linestyle=':', linewidth=2, label=f'±1σ: {np.std(alt_error):.3f}')
     ax.legend()
@@ -549,7 +552,7 @@ def run_complete_demo(mission: str = "PSLV", output_dir: str = "./outputs"):
     min_len = min(len(rk8_result.altitudes_km), len(pinn_states))
     pinn_alt = (np.linalg.norm(pinn_states[:, :3], axis=1) - PhysicalConstants.R_EARTH_MEAN) / 1000
     pinn_vel = np.linalg.norm(pinn_states[:, 3:], axis=1) / 1000
-    rk8_vel = np.linalg.norm(rk8_result.states[:, :3], axis=1) / 1000
+    rk8_vel = np.linalg.norm(rk8_result.states[:, 3:], axis=1) / 1000
     
     alt_error = np.abs(pinn_alt[:min_len] - rk8_result.altitudes_km[:min_len])
     vel_error = np.abs(pinn_vel[:min_len] - rk8_vel[:min_len])
@@ -662,7 +665,7 @@ def run_complete_demo(mission: str = "PSLV", output_dir: str = "./outputs"):
         # Add plots
         plot_files = [
             output_path / "plots" / "01_training_history.png",
-            output_path / "plots" / "02_trajectory_validation.png",
+            output_path / "plots" / "02_trajectory_comparison.png",
             output_path / "plots" / "03_optimization_results.png",
             output_path / "plots" / "04_pareto_front.png"
         ]

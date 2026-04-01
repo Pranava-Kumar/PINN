@@ -400,6 +400,9 @@ with tab_train:
         # Training callback for real-time updates
         loss_history = {'epoch': [], 'total': [], 'data': [], 'physics': [], 'initial': []}
         
+        # Dedicated container for the live chart
+        live_chart_placeholder = progress_container.empty()
+        
         def training_callback(epoch, losses):
             loss_history['epoch'].append(epoch)
             loss_history['total'].append(losses['total'])
@@ -410,20 +413,45 @@ with tab_train:
             # Update progress
             progress = (epoch + 1) / pinn_cfg.epochs
             progress_bar.progress(min(progress, 1.0))
-            status_text.text(f"Epoch {epoch}/{pinn_cfg.epochs} | Loss: {losses['total']:.2e}")
+            status_text.markdown(f"**Epoch {epoch}/{pinn_cfg.epochs}** | Current Loss: `{losses['total']:.4e}`")
             
-            # Update chart every 200 epochs
-            if epoch % 200 == 0:
-                fig, ax = plt.subplots(figsize=(10, 4))
-                ax.semilogy(loss_history['epoch'], loss_history['total'], 'b-', label='Total', linewidth=2)
-                ax.semilogy(loss_history['epoch'], loss_history['data'], 'g--', label='Data', linewidth=1.5)
-                ax.semilogy(loss_history['epoch'], loss_history['physics'], 'r-.', label='Physics', linewidth=1.5)
-                ax.set_xlabel('Epoch')
-                ax.set_ylabel('Loss (log scale)')
-                ax.legend()
-                ax.grid(True, alpha=0.3)
-                loss_chart.pyplot(fig)
-                plt.close(fig)
+            # Update chart periodically (every 100 epochs or final)
+            is_final = (epoch == pinn_cfg.epochs - 1)
+            if epoch % 100 == 0 or is_final or np.isnan(losses['total']):
+                # Create a clean Plotly figure
+                fig = go.Figure()
+                
+                if not np.isnan(losses['total']):
+                    fig.add_trace(go.Scatter(
+                        x=loss_history['epoch'], y=loss_history['total'],
+                        mode='lines', name='Total Loss',
+                        line=dict(color='#636EFA', width=2)
+                    ))
+                    fig.add_trace(go.Scatter(
+                        x=loss_history['epoch'], y=loss_history['data'],
+                        mode='lines', name='Data Loss',
+                        line=dict(color='#00CC96', width=1.5, dash='dash')
+                    ))
+                    fig.add_trace(go.Scatter(
+                        x=loss_history['epoch'], y=loss_history['physics'],
+                        mode='lines', name='Physics Loss',
+                        line=dict(color='#EF553B', width=1.5, dash='dot')
+                    ))
+                
+                fig.update_layout(
+                    height=350,
+                    yaxis_type="log",
+                    xaxis_title="Epoch",
+                    yaxis_title="Loss (log scale)",
+                    template="plotly_dark",
+                    margin=dict(l=10, r=10, t=10, b=10),
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+                )
+                
+                live_chart_placeholder.plotly_chart(fig, use_container_width=True)
+                
+                if np.isnan(losses['total']):
+                    st.error("⚠️ Numerical instability detected (NaN). Training halted.")
         
         # Train PINN
         with st.spinner("Training PINN... This may take 1-3 minutes."):
@@ -507,8 +535,12 @@ with tab_validate:
         col1, col2, col3, col4 = st.columns(4)
         col1.metric("PINN Inference", f"{pinn_time_ms:.1f} ms")
         col2.metric("RK8 Propagation", f"{rk8_result.compute_time_s*1000:.1f} ms")
-        col3.metric("Speedup", f"{speedup:.0f}x")
-        col4.metric("Mean Error", f"{np.mean(alt_error):.3f} km")
+        
+        speedup_val = (rk8_result.compute_time_s * 1000 / pinn_time_ms) if pinn_time_ms > 0 else 0
+        col3.metric("Speedup", f"{speedup_val:.0f}x")
+        
+        mean_err = np.nanmean(alt_error)
+        col4.metric("Mean Error", f"{mean_err:.3f} km" if not np.isnan(mean_err) else "nan km")
         
         # Plots
         col_plot1, col_plot2 = st.columns(2)
@@ -542,6 +574,7 @@ with tab_validate:
                 title="Altitude Decay: PINN vs RK8",
                 height=500,
                 showlegend=True,
+                template="plotly_dark",
                 legend=dict(x=0.02, y=0.98, xanchor='left', yanchor='top')
             )
             fig1.update_xaxes(title_text="Time (years)", row=2, col=1)
@@ -562,20 +595,24 @@ with tab_validate:
             )
             
             # Cumulative error
-            sorted_errors = np.sort(alt_error)
-            cumulative = np.arange(1, len(sorted_errors)+1) / len(sorted_errors) * 100
-            
-            fig2.add_trace(
-                go.Scatter(x=sorted_errors, y=cumulative, 
-                          mode='lines', name='Cumulative %',
-                          line=dict(color='#d62728', width=2)),
-                row=2, col=1
-            )
+            # Filter nans for sorting
+            clean_errors = alt_error[~np.isnan(alt_error)]
+            if len(clean_errors) > 0:
+                sorted_errors = np.sort(clean_errors)
+                cumulative = np.arange(1, len(sorted_errors)+1) / len(sorted_errors) * 100
+                
+                fig2.add_trace(
+                    go.Scatter(x=sorted_errors, y=cumulative, 
+                              mode='lines', name='Cumulative %',
+                              line=dict(color='#d62728', width=2)),
+                    row=2, col=1
+                )
             
             fig2.update_layout(
                 title="Prediction Error Analysis",
                 height=500,
-                showlegend=True
+                showlegend=True,
+                template="plotly_dark"
             )
             fig2.update_xaxes(title_text="Absolute Error (km)")
             fig2.update_yaxes(title_text="Frequency", row=1, col=1)
@@ -585,26 +622,25 @@ with tab_validate:
         
         # Error statistics table
         st.subheader("Error Statistics")
+        
+        # Safe relative error
+        safe_rk8 = np.where(rk8_result.altitudes_km[:min_len] == 0, 1e-6, rk8_result.altitudes_km[:min_len])
+        rel_err = (alt_error / safe_rk8) * 100
+        
         error_df = pd.DataFrame({
             'Metric': ['Mean', 'Std Dev', 'Min', 'Max', 'RMSE', '95th Percentile'],
             'Altitude Error (km)': [
-                np.mean(alt_error),
-                np.std(alt_error),
-                np.min(alt_error),
-                np.max(alt_error),
-                np.sqrt(np.mean(alt_error**2)),
-                np.percentile(alt_error, 95)
+                np.nanmean(alt_error), np.nanstd(alt_error), np.nanmin(alt_error),
+                np.nanmax(alt_error), np.sqrt(np.nanmean(alt_error**2)), 
+                np.nanpercentile(alt_error, 95) if len(clean_errors) > 0 else np.nan
             ],
             'Relative Error (%)': [
-                np.mean(alt_error / rk8_result.altitudes_km[:min_len]) * 100,
-                np.std(alt_error / rk8_result.altitudes_km[:min_len]) * 100,
-                np.min(alt_error / rk8_result.altitudes_km[:min_len]) * 100,
-                np.max(alt_error / rk8_result.altitudes_km[:min_len]) * 100,
-                np.sqrt(np.mean((alt_error / rk8_result.altitudes_km[:min_len])**2)) * 100,
-                np.percentile(alt_error / rk8_result.altitudes_km[:min_len], 95) * 100
+                np.nanmean(rel_err), np.nanstd(rel_err), np.nanmin(rel_err),
+                np.nanmax(rel_err), np.sqrt(np.nanmean(rel_err**2)),
+                np.nanpercentile(rel_err, 95) if len(clean_errors) > 0 else np.nan
             ]
         })
-        st.dataframe(error_df, hide_index=True, use_container_width=True)
+        st.dataframe(error_df.fillna("None"), hide_index=True, use_container_width=True)
 
 
 # =============================================================================
@@ -620,7 +656,7 @@ with tab_optimize:
     """)
     
     if not st.session_state.pinn_trained:
-        st.warning("⚠️ Please train the PINN model first for fastest optimization.")
+        st.info("ℹ️ Train the PINN model first if you wish to validate the baseline decay trajectory.")
     
     # Optimization controls
     col_opt1, col_opt2 = st.columns([2, 1])
@@ -684,8 +720,12 @@ with tab_optimize:
             try:
                 # We create a dummy spacecraft config for the report generator
                 from config import SpacecraftConfig, MissionType
+                
+                # Sanitize name for PDF (remove Delta etc)
+                safe_name = current_config['name'].replace('Δ', 'Delta').replace('ΔV', 'Delta-V')
+                
                 report_config = SpacecraftConfig(
-                    name=current_config['name'],
+                    name=safe_name,
                     dry_mass=current_config['dry_mass'],
                     wet_mass=current_config['dry_mass'] * 1.1, # Estimation
                     cross_section_no_sail=2.0,
@@ -800,73 +840,70 @@ with tab_optimize:
 with tab_analyze:
     st.header("Comprehensive Analysis")
     
-    if not st.session_state.pinn_trained:
-        st.warning("⚠️ Please train the PINN model first.")
-    else:
-        # Generate Pareto front
-        st.subheader("Multi-Objective Pareto Analysis")
+    # Generate Pareto front
+    st.subheader("Multi-Objective Pareto Analysis")
+    
+    if st.button("Generate Pareto Front"):
+        state0 = circular_orbit_state(
+            current_config['orbit_altitude'],
+            current_config['orbit_inclination']
+        )
+            
+        with st.spinner("Computing Pareto front..."):
+            pareto_result = compute_pareto_front(
+                state0,
+                current_config['Cd'],
+                current_config['drag_sail_area'],
+                current_config['dry_mass'],
+                dv_range=(0, 30),
+                n_points=40,
+                verbose=False,
+            )
+            st.session_state.pareto_result = pareto_result
         
-        if st.button("Generate Pareto Front"):
-            state0 = circular_orbit_state(
-                current_config['orbit_altitude'],
-                current_config['orbit_inclination']
-            )
-            
-            with st.spinner("Computing Pareto front..."):
-                pareto_result = compute_pareto_front(
-                    state0,
-                    current_config['Cd'],
-                    current_config['drag_sail_area'],
-                    current_config['dry_mass'],
-                    dv_range=(0, 30),
-                    n_points=40,
-                    verbose=False,
-                )
-                st.session_state.pareto_result = pareto_result
-            
-            # Plot Pareto front
-            fig = go.Figure()
-            
-            fig.add_trace(go.Scatter(
-                x=pareto_result.dv_values,
-                y=pareto_result.lifetimes,
-                mode='markers',
-                name='All Points',
-                marker=dict(size=8, color='#aec7e8', opacity=0.5)
-            ))
-            
-            fig.add_trace(go.Scatter(
-                x=pareto_result.pareto_dv,
-                y=pareto_result.pareto_lifetime,
-                mode='markers+lines',
-                name='Pareto-Optimal',
-                marker=dict(size=12, color='#ff7f0e', symbol='star'),
-                line=dict(dash='dash', width=2)
-            ))
-            
-            fig.add_shape(
-                type="line", x0=0, x1=30,
-                y0=target_lifetime, y1=target_lifetime,
-                line=dict(color="green", width=2, dash="dash")
-            )
-            
-            fig.update_layout(
-                title="Pareto Front: ΔV vs. Lifetime Trade-off",
-                xaxis_title="ΔV (m/s)",
-                yaxis_title="Orbital Lifetime (years)",
-                height=500,
-                showlegend=True
-            )
-            
-            st.plotly_chart(fig, use_container_width=True)
-            
-            st.markdown(f"""
-            **Pareto Analysis Summary:**
-            - Total points evaluated: {len(pareto_result.dv_values)}
-            - Pareto-optimal points: {pareto_result.n_pareto_points}
-            - ΔV range: {pareto_result.pareto_dv.min():.1f} to {pareto_result.pareto_dv.max():.1f} m/s
-            - Lifetime range: {pareto_result.pareto_lifetime.min():.1f} to {pareto_result.pareto_lifetime.max():.1f} years
-            """)
+        # Plot Pareto front
+        fig = go.Figure()
+        
+        fig.add_trace(go.Scatter(
+            x=pareto_result.dv_values,
+            y=pareto_result.lifetimes,
+            mode='markers',
+            name='All Points',
+            marker=dict(size=8, color='#aec7e8', opacity=0.5)
+        ))
+        
+        fig.add_trace(go.Scatter(
+            x=pareto_result.pareto_dv,
+            y=pareto_result.pareto_lifetime,
+            mode='markers+lines',
+            name='Pareto-Optimal',
+            marker=dict(size=12, color='#ff7f0e', symbol='star'),
+            line=dict(dash='dash', width=2)
+        ))
+        
+        fig.add_shape(
+            type="line", x0=0, x1=30,
+            y0=target_lifetime, y1=target_lifetime,
+            line=dict(color="green", width=2, dash="dash")
+        )
+        
+        fig.update_layout(
+            title="Pareto Front: ΔV vs. Lifetime Trade-off",
+            xaxis_title="ΔV (m/s)",
+            yaxis_title="Orbital Lifetime (years)",
+            height=500,
+            showlegend=True
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
+        
+        st.markdown(f"""
+        **Pareto Analysis Summary:**
+        - Total points evaluated: {len(pareto_result.dv_values)}
+        - Pareto-optimal points: {pareto_result.n_pareto_points}
+        - ΔV range: {pareto_result.pareto_dv.min():.1f} to {pareto_result.pareto_dv.max():.1f} m/s
+        - Lifetime range: {pareto_result.pareto_lifetime.min():.1f} to {pareto_result.pareto_lifetime.max():.1f} years
+        """)
         
         # Atmospheric density analysis
         st.subheader("Atmospheric Density Profile")

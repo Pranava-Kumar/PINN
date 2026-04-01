@@ -1,0 +1,23 @@
+{
+  "epochs": [
+    0
+  ],
+  "loss_total": [
+    Infinity
+  ],
+  "loss_data": [
+    15303484416.0
+  ],
+  "loss_physics": [
+    Infinity
+  ],
+  "loss_initial": [
+    15182359552.0
+  ],
+  "learning_rate": [
+    0.001
+  ],
+  "train_time_s": 1.45653200000379,
+  "best_epoch": 0,
+  "best_loss": Infinity
+}
